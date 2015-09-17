@@ -61,6 +61,7 @@ public class BrowserView {
     private Button myBackButton;
     private Button myNextButton;
     private Button myHomeButton;
+    private Button myAddFavorites;
     // favorites
     private ComboBox<String> myFavorites;
     // get strings from resource file
@@ -84,19 +85,20 @@ public class BrowserView {
         enableButtons();
         // create scene to hold UI
         myScene = new Scene(root, DEFAULT_SIZE.width, DEFAULT_SIZE.height);
-        //myScene.getStylesheets().add(DEFAULT_RESOURCE_PACKAGE + STYLESHEET);
+        myScene.getStylesheets().add(DEFAULT_RESOURCE_PACKAGE + STYLESHEET);
     }
 
     /**
      * Display given URL.
      */
     public void showPage (String url) {
-        URL valid = myModel.go(url);
-        if (url != null) {
+        URL valid = null;
+        try {
+            valid = myModel.go(url);
             update(valid);
         }
-        else {
-            showError("Could not load " + url);
+        catch (BrowserException e) {
+            showError(e.getMessage());
         }
     }
 
@@ -126,12 +128,22 @@ public class BrowserView {
 
     // move to the next URL in the history
     private void next () {
-        update(myModel.next());
+        try {
+            update(myModel.next());
+        }
+        catch (BrowserException e) {
+            showError(e.getMessage());
+        }
     }
 
     // move to the previous URL in the history
     private void back () {
-        update(myModel.back());
+        try {
+            update(myModel.back());
+        }
+        catch (BrowserException e) {
+            showError(e.getMessage());
+        }
     }
 
     // change current URL to the home page, if set
@@ -141,7 +153,13 @@ public class BrowserView {
 
     // change page to favorite choice
     private void showFavorite (String favorite) {
+        try{
         showPage(myModel.getFavorite(favorite).toString());
+        myFavorites.getSelectionModel().clearSelection();
+        }
+        catch(BrowserException e){
+            showError(e.getMessage());
+        }
     }
 
     // update just the view to display given URL
@@ -182,7 +200,12 @@ public class BrowserView {
     // organize user's options for controlling/giving input to model
     private Node makeInputPanel () {
         VBox result = new VBox();
-        result.getChildren().addAll(makeNavigationPanel(), makePreferencesPanel());
+        try {
+            result.getChildren().addAll(makeNavigationPanel(), makePreferencesPanel());
+        }
+        catch (BrowserException e) {
+            showError(e.getMessage());
+        }
         return result;
     }
 
@@ -219,12 +242,23 @@ public class BrowserView {
     }
 
     // make buttons for setting favorites/home URLs
-    private Node makePreferencesPanel () {
+    private Node makePreferencesPanel () throws BrowserException {
         HBox result = new HBox();
         result.getChildren().add(makeButton("SetHomeCommand", event -> {
             myModel.setHome();
             enableButtons();
         }));
+        myAddFavorites = makeButton("AddFavoriteCommand", event -> addFavorite());
+        result.getChildren().add(myAddFavorites);
+        myFavorites = new ComboBox<>();
+        myFavorites.setPromptText("All Favorites");
+        try {
+            myFavorites.setOnAction(event -> showFavorite(myFavorites.getValue()));
+        }
+        catch (Exception e) {
+            showError(e.getMessage());
+        }
+        result.getChildren().add(myFavorites);
         return result;
     }
 
@@ -258,8 +292,8 @@ public class BrowserView {
     // very old style way create a callback (inner class)
     private class ShowPage implements EventHandler<ActionEvent> {
         @Override      
-        public void handle (ActionEvent event) {       
-            showPage(myURLDisplay.getText());      
+        public void handle (ActionEvent event) {   
+            showPage(myURLDisplay.getText());     
         }      
     }
 
